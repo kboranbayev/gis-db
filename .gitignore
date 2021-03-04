@@ -1,0 +1,11 @@
+
+
+# Ignore object files and executables
+*.out
+*.core
+*.exe
+
+# Ignore test folder
+GIS
+GIS/*
+
