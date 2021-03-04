@@ -7,5 +7,6 @@
 
 # Ignore test folder
 GIS
-GIS/*
+gis
+gis/*
 
