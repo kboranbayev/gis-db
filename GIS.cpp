@@ -17,11 +17,12 @@ int main(int argc, char **argv) {
     ofstream log(argv[3], ios::out), db(argv[1], ios::out);
 
     log.open(argv[3], ios::out);
-    db.open(argv[1], ios::out);
+    //db.open(argv[1], ios::out);
     log.close();
-    db.close();
+    //db.close();
+
     log.open(argv[3], ios::app);
-    db.open(argv[1], ios::app);
+    //db.open(argv[1], ios::app);
 
     if (script.fail()) {
         cerr << "Script File: " << argv[2] << endl;
@@ -30,7 +31,7 @@ int main(int argc, char **argv) {
 
     Logger * logger = new Logger(log, argv[3]);
 
-    CommandProcessor * cp = new CommandProcessor (db, logger);
+    CommandProcessor * cp = new CommandProcessor (argv[1], logger);
 
     while (getline(script, command)) {
         cp->processCommand(command);

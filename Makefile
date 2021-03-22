@@ -5,10 +5,15 @@ CC = g++
 CFLAGS = -Wall -W -pedantic
 LIBS = 
 
-all: $(GIS)
+#$(GIS)
+
+all:
+	$(CC) $(CFLAGS) $(TARGET) $(LIBS) -o $(GIS)
+
 
 clean:
 	rm -rf $(GIS) core *.o
 
-$(GIS):
-	$(CC) $(CFLAGS) $(TARGET) $(LIBS) -o $@
+#$(GIS):
+#	$(CC) $(CFLAGS) $(TARGET) $(LIBS) -o $@
+	

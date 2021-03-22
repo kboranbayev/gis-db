@@ -63,6 +63,8 @@ class NameIndex {
 
     ResolutionFunction * f;
 
+    int longest_prob_sequence;
+
     void expandAndRehash() {
         vector<K> new_entries, tmp_entries;
         vector<Status> new_entry_status, tmp_entry_status;
@@ -152,6 +154,13 @@ public:
 
     double getLoadFactor(int size, int capacity) {
         return (double) size / capacity;
+    }
+
+    void displayData(void) {
+        for (int i = 0; i < c; i++) {
+            if (entry_status[i] == OCCUPIED)
+                cout << i << ": " << entries[i] << endl;
+        }
     }
 
 };

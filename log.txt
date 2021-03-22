@@ -1,0 +1,23 @@
+Course Project for COMP 8042
+Student Name: Kuanysh Boranbayev, Student Id: A00978727
+
+Begin of GIS Program log:
+dbFile: db.txt
+script: log.txt
+log: log.txt
+Start Time: Mon Mar 22 06:52:44 2021
+
+; Script 1
+;
+; Testing using a small dataset
+;
+; Specify boundaries of coordinate space:
+;
+world	0794530W	0792630W	381000N	383000N
+------------------------------------------------------------------------------------------
+
+Latitude/longitude values in index entries are shown as signed integers, in total seconds.
+------------------------------------------------------------------------------------------
+
+;
+; Import the dataset [the address here is a relative address]

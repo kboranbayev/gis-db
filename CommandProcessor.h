@@ -3,6 +3,7 @@
 
 #include "GIS.h"
 #include "GISRecord.h"
+#include "BufferPool.h"
 #include "Logger.h"
 
 using namespace std;
@@ -11,11 +12,21 @@ class CommandProcessor {
 
     int numCommands;
 
-    //GISRecord * record;
+    //GISRecord<string> * record;
+
+    World world;
 
     Logger * log;
 
-    ofstream * db;
+    BufferPool * bp;
+
+    //ofstream * db;
+    string dbName;
+
+    vector<Record<string>> all;
+
+    string wlong, elong, slat, nlat;
+    char *wl;
 
     int processCommandString(string cmd) {
         if (cmd.at(0) == ';') { return IGNORE; }
@@ -28,18 +39,21 @@ class CommandProcessor {
         else { return IGNORE; }
     }
 public:
-    CommandProcessor (ofstream & db_file, Logger * logger) {
+    //CommandProcessor (ofstream & db_file, Logger * logger) {
+    CommandProcessor (string db_file_name, Logger * logger) {
         //log = &log_file;
         log = logger;
-        db = &db_file;
+        //db = &db_file;
+        dbName = db_file_name;
         numCommands = 0;
-        //cout << "Processing " << args << endl;
 
+        //cout << "Processing " << args << endl;
     }
 
     void processCommand(string cmd) {
         istringstream iss(cmd);
-        string wlong, elong, slat, nlat;
+        string import_file_name;
+       
         switch (processCommandString(cmd)) {
             case WORLD:
                 log->logWorld(cmd);
@@ -48,14 +62,32 @@ public:
                 getline(iss, elong, '\t');
                 getline(iss, slat, '\t');
                 getline(iss, nlat, '\t');
-                cout << wlong << endl;
-                cout << elong << endl;
-                cout << slat << endl;
-                cout << nlat << endl;
+     
+                world.w_long = dms2sec(wlong);
+                world.e_long = dms2sec(elong);
+                world.s_lat = dms2sec(slat);
+                world.n_lat = dms2sec(nlat);
+                // TO DO: world needs validation here
+
                 break;
             case IMPORT:
                 numCommands++;
-                
+                getline(iss, import_file_name, '\t');
+                getline(iss, import_file_name, '\t');
+                cout << "File:" << import_file_name << "|" << endl;
+
+                bp = new BufferPool(dbName, &world, import_file_name);
+
+                bp->readData(import_file_name);
+
+                //bp->displayAll();
+                bp->write2DB();
+
+                all = bp->getAllImportedRecords();
+
+                bp->nameIndexDebug();
+                // for (int i = 0; i < (int) all.size(); i++)
+                //     cout << "[Hash Here: " << "[" << all[i].feature_name  << ":" << all[i].state_alpha << ", [" << i << "]]" << endl;
                 break;
             case DEBUG:
                 numCommands++;

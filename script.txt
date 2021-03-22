@@ -1,0 +1,10 @@
+; Script 1
+;
+; Testing using a small dataset
+;
+; Specify boundaries of coordinate space:
+;
+world	0794530W	0792630W	381000N	383000N
+;
+; Import the dataset [the address here is a relative address]
+import	VA_Monterey.txt
