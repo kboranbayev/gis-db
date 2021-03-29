@@ -81,11 +81,11 @@ public:
                 bp->readData(import_file_name);
 
                 //bp->displayAll();
-                bp->write2DB();
+                //bp->write2DB();
 
-                all = bp->getAllImportedRecords();
+                //all = bp->getAllImportedRecords();
 
-                bp->nameIndexDebug();
+                //bp->nameIndexDebug();
                 // for (int i = 0; i < (int) all.size(); i++)
                 //     cout << "[Hash Here: " << "[" << all[i].feature_name  << ":" << all[i].state_alpha << ", [" << i << "]]" << endl;
                 break;

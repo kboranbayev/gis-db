@@ -24,11 +24,12 @@ using namespace std;
 enum Command {WORLD, IMPORT, DEBUG, QUIT, WHAT_IS_AT, WHAT_IS_IN, IGNORE};
 
 
+
 struct World {
-    double w_long;
-    double e_long;
-    double n_lat;
-    double s_lat;
+    long w_long;
+    long e_long;
+    long n_lat;
+    long s_lat;
 };
 
 template <typename K>
@@ -42,12 +43,12 @@ struct Record {
     K county_numeric;
     K prim_lat_dms;
     K prim_long_dms;
-    double prim_lat_dec;
-    double prim_long_dec;
+    long prim_lat_dec;
+    long prim_long_dec;
     K source_lat_dms;
     K source_long_dms;
-    double source_lat_dec;
-    double source_long_dec;
+    long source_lat_dec;
+    long source_long_dec;
     K elev_in_m;
     K elev_in_ft;
     K map_name;
@@ -56,8 +57,8 @@ struct Record {
 };
 
 
-double dms2sec (string dms) {
-    double res = 0;
+long dms2sec (string dms) {
+    long res = 0;
     
     int sign = 1;
     
@@ -71,7 +72,7 @@ double dms2sec (string dms) {
     }
     
     int d = 1, m = 0, s = 0;
-    double day = 0, min = 0, sec = 0;
+    long day = 0, min = 0, sec = 0;
     int decimal = 1;
     for (unsigned int i = 0; i < (unsigned int) dms.size(); i++) {
         if (d) {

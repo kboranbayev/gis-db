@@ -4,6 +4,8 @@
 #include "GIS.h"
 
 #include "NameIndex.h"
+#include "CoordinateIndex.h"
+// #include "QuadTree.h"
 
 #include <list>
 
@@ -112,12 +114,12 @@ public:
                     county_numeric,
                     prim_lat_dms,
                     prim_long_dms,
-                    atof(prim_lat_dec.c_str()),
-                    atof(prim_long_dec.c_str()),
+                    atol(prim_lat_dec.c_str()),
+                    atol(prim_long_dec.c_str()),
                     source_lat_dms,
                     source_long_dms,
-                    atof(source_lat_dec.c_str()),
-                    atof(source_long_dec.c_str()),
+                    atol(source_lat_dec.c_str()),
+                    atol(source_long_dec.c_str()),
                     elec_in_m,
                     elec_in_ft,
                     map_name,
@@ -133,8 +135,10 @@ public:
 
                 
 
-                indexIt();
+                //indexIt();
                 
+
+
 /*
                 r.feature_id = atol(feature_id.c_str());
                 r.feature_name = feature_name;
@@ -176,6 +180,7 @@ public:
             }
                 
         }
+        coordinateIt();
     }
 
     void indexIt(void) {
@@ -183,6 +188,35 @@ public:
             string entry = "[" + all[i].feature_name + ":" + all[i].state_alpha + ", [" + std::to_string(i) + "]]";
             nameIndex->insert(entry);
         }
+    }
+
+
+
+    void coordinateIt(void) {
+        PRQuadTree * center =  new PRQuadTree (Point(world->w_long, world->n_lat), Point(world->e_long, world->s_lat));
+
+        cout << "WORLD topLeft: ";
+        center->topLeft.printPoint();
+        cout << "\nWORLD botRight: ";
+        center->botRight.printPoint();
+        cout << endl;
+        for (int i = 0; i < (int) all.size(); i++) {
+
+            //cout << "y = " << dms2sec(all[i].prim_lat_dms) << " x = " << dms2sec(all[i].prim_long_dms) << endl;
+            Node node (Point(dms2sec(all[i].prim_long_dms), dms2sec(all[i].prim_lat_dms)), i);
+
+            //cout << "n printPoint = " << dms2sec(all[i].prim_long_dms);
+            //n.pos.printPoint();
+
+            center->insert(&node);
+            // if (i == 2)
+            //     exit(1);
+        }
+        
+        //cout << "Center.n->data = " << center->node->data << endl;
+        center->print();
+
+
     }
 
     void displayAll(void) {
@@ -266,7 +300,13 @@ public:
 
     void nameIndexDebug (void) {
         nameIndex->displayData();
+
+        cout << "Imported feature by name: " << nameIndex->getNumOccupied() << endl;
+        cout << "Longest probe sequence: " << nameIndex->getMaxCollisions() << endl;
+        cout << "Current Table Size: " << nameIndex->getTableSize() << endl;
+        cout << "Average Name Length: " << nameIndex->getAverageNameLength() << endl;
     }
+
 
 /*
     void write2DB (GISRecord<string> * r) {

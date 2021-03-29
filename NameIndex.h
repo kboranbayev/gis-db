@@ -16,11 +16,27 @@ class SimpleStringHash : public HashFunction<string> {
 public:
     // Computes a simple hash value for a string
     unsigned int operator()(const string& s) const {
+        // unsigned int hash = 0;
+        // for (unsigned int i = 0; i < s.size(); i++) {
+        //     hash += s[i];
+        // }
+        // BEGIN: ELF hash
         unsigned int hash = 0;
-        for (unsigned int i = 0; i < s.size(); i++) {
-            hash += s[i];
+        unsigned int x = 0;
+        unsigned int i = 0;
+        unsigned int len = s.length();
+
+        for (i = 0; i < len; i++)
+        {
+            hash = (hash << 4) + (s[i]);
+            if ((x = hash & 0xF0000000) != 0)
+            {
+                hash ^= (x >> 24);
+            }
+            hash &= ~x;
         }
         return hash;
+        // END: ELF hash
     }
 };
 
@@ -63,7 +79,9 @@ class NameIndex {
 
     ResolutionFunction * f;
 
-    int longest_prob_sequence;
+    int collisions;
+
+    int num_occupied;
 
     void expandAndRehash() {
         vector<K> new_entries, tmp_entries;
@@ -77,6 +95,9 @@ class NameIndex {
 
         entries = new_entries;
         entry_status = new_entry_status;
+
+        collisions = 0;
+        num_occupied = 0;
 
         for (int i = 0; i < c; i++) {
             if (tmp_entry_status[i] == OCCUPIED)
@@ -93,6 +114,9 @@ public:
         f = new QuadraticProbing();
         entries.resize(c);
         entry_status.resize(c);
+
+        num_occupied = 0;
+        collisions = 0;
     }
 
     ~NameIndex() {}
@@ -101,10 +125,13 @@ public:
         unsigned int h = hash->operator()(key) % c;
         unsigned int i = 0;
         unsigned int hi = h;
-
+        int collision = 0;
         while (entry_status[hi] == OCCUPIED) {
-            if (entries[hi] == key)
-                return false;
+            h = f->operator()(hi);
+            if (entries[hi] == key) return false;
+            collision++;
+            if (collision > collisions) 
+                collisions = collision;
             ++i;
             hi = (h + i) % c;
         }
@@ -126,9 +153,10 @@ public:
 
         while (entry_status[hi] != EMPTY) {
             if (entry_status[hi] == OCCUPIED && entries[hi] != key)
-                h = f->operator()(hash->operator()(key)) % c;
-            if (entry_status[hi] == OCCUPIED && entries[hi] == key)
+                h = f->operator()(hi);
+            if (entry_status[hi] == OCCUPIED && entries[hi] == key) {
                 return true;
+            }
             ++i;
             hi = (h + i) % c;
         }
@@ -161,6 +189,34 @@ public:
             if (entry_status[i] == OCCUPIED)
                 cout << i << ": " << entries[i] << endl;
         }
+    }
+
+    int getTableSize(void) {
+        return c;
+    }
+
+    int getAverageNameLength(void) {
+        int sum = 0, count = 0;
+        for (int i = 0; i < c; i++)
+            if (entry_status[i] == OCCUPIED) {
+                sum += entries[i].length();
+                count++;
+            }
+
+        return sum / count;
+    }
+
+    int getNumOccupied(void) {
+        for (int i = 0; i < c; i++)
+            if (entry_status[i] == OCCUPIED)
+                num_occupied++;
+
+        return num_occupied;
+    }
+
+
+    unsigned int getMaxCollisions(void) {
+        return collisions;
     }
 
 };
