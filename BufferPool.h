@@ -3,337 +3,237 @@
 
 #include "GIS.h"
 
-#include "NameIndex.h"
-#include "CoordinateIndex.h"
-// #include "QuadTree.h"
-
-#include <list>
-
-#define BUFFER_SIZE 15
-
 using namespace std;
 
-//template <typename K>
+typedef struct MemoryPage {
+    MemoryPage *prev, *next;
+    string data;
+    unsigned key;
+} MemoryPage;
+
+typedef struct Memory {
+    MemoryPage *head, *tail;
+} Memory;
+
+typedef map<unsigned, MemoryPage *> CacheIndex;
+
+typedef struct Cache {
+    unsigned capacity;
+    Memory memory;
+    CacheIndex index;
+} Cache;
+
 class BufferPool {
-    int size;
+    private:
+        Cache cache;
+        unsigned capacity;
 
-    // store keys to cache
-    list<int> keys;
-
-    vector<string> buffer;
-
-    vector<Record<string>> all;
-
-    //ofstream * db;
-    World *world;
-
-    string dbName;
-
-    NameIndex<string> *nameIndex;
-
-public:
-    BufferPool (string db_name, World *world_boundaries, string file) {
-        ofstream db1(db_name.c_str(), ios::out);
-        db1.close();
-
-        if (db1.is_open())
-            cout << "It is still open even if I did close.\n";
-        //db1.open(dbName.c_str(), ios::app);
-
-        //db = &db1;
-        dbName = db_name;
-        ifstream inFile(file); 
-        
-        int n = count(istreambuf_iterator<char>(inFile), istreambuf_iterator<char>(), '\n');
-
-        size = n;
-        //all.resize(size);
-        inFile.close();
-
-        world = world_boundaries;
-
-        nameIndex = new NameIndex<string>(INITIAL_TABLE_SIZE);
-    }
-
-    int getSize(void) {
-        return size;
-    }
-
-
-    void readData (string data_file_name) {
-        cout << "Importing |" << data_file_name << '|' << endl;
-
-        ifstream data(data_file_name);
-
-        if (data.fail()) {
-            cerr << "Import Error: " << data_file_name << " file not found" << endl;
-            exit(2);
+        bool full() {
+            return cache.index.size() == capacity;
         }
-        string line;
 
-        while (getline(data, line)) {
-            istringstream iss(line);
-            string feature_id, feature_name, feature_class, state_alpha, state_numeric, county_name, county_numeric;
-            string prim_lat_dms, prim_long_dms, prim_lat_dec, prim_long_dec;
-            string source_lat_dms, source_long_dms, source_lat_dec, source_long_dec;
-            string elec_in_m, elec_in_ft, map_name;
-            string date_created, date_edited;
-            if (line.rfind("FEATURE_ID|") != 0) {
-                getline(iss, feature_id, '|');
-                getline(iss, feature_name, '|');
-                getline(iss, feature_class, '|');
-                getline(iss, state_alpha, '|');
-                getline(iss, state_numeric, '|');
-                getline(iss, county_name, '|');
-                getline(iss, county_numeric, '|');
-                getline(iss, prim_lat_dms, '|');
-                getline(iss, prim_long_dms, '|');
-                getline(iss, prim_lat_dec, '|');
-                getline(iss, prim_long_dec, '|');
-                getline(iss, source_lat_dms, '|');
-                getline(iss, source_long_dms, '|');
-                getline(iss, source_lat_dec, '|');
-                getline(iss, source_long_dec, '|');
-                getline(iss, source_lat_dms, '|');
-                getline(iss, source_long_dms, '|');
-                getline(iss, elec_in_m, '|');
-                getline(iss, elec_in_ft, '|');
-                getline(iss, map_name, '|');
-                getline(iss, date_created, '|');
-                getline(iss, date_edited, '|');
-                
+        bool empty() {
+            return cache.index.size() == 0;
+        }
 
+        MemoryPage * newMemoryPage (unsigned _key, string _data) {
+            MemoryPage * newPage = new MemoryPage;
+            newPage->data = _data;
+            newPage->key = _key;
 
-                Record<string> r { 
-                    atol(feature_id.c_str()),
-                    feature_name,
-                    feature_class,
-                    state_alpha,
-                    state_numeric,
-                    county_name,
-                    county_numeric,
-                    prim_lat_dms,
-                    prim_long_dms,
-                    atol(prim_lat_dec.c_str()),
-                    atol(prim_long_dec.c_str()),
-                    source_lat_dms,
-                    source_long_dms,
-                    atol(source_lat_dec.c_str()),
-                    atol(source_long_dec.c_str()),
-                    elec_in_m,
-                    elec_in_ft,
-                    map_name,
-                    date_created,
-                    date_edited 
-                };
+            newPage->prev = newPage->next = NULL;
 
-                if (dms2sec(prim_lat_dms) < world->n_lat && dms2sec(prim_lat_dms) > world->s_lat && 
-                    dms2sec(prim_long_dms) < world->e_long && dms2sec(prim_long_dms) > world->w_long) {
-                    
-                    all.push_back(r);
+            return newPage;
+        }
+
+        void makeARoom() {
+            if (!full()) return;
+
+            if (cache.memory.head == cache.memory.tail)
+                cache.memory.head = NULL;
+            
+            MemoryPage * pageToBeRemoved = cache.memory.tail;
+            cache.memory.tail = pageToBeRemoved->prev;
+
+            if (cache.memory.tail != NULL)
+                cache.memory.tail->next = NULL;
+            
+            cout << "Cache is full. Removing key " << pageToBeRemoved->key << " from cache before insertint a new one..." << endl;
+
+            cache.index.erase(pageToBeRemoved->key);
+            delete pageToBeRemoved;
+        }
+
+        void dump() {
+            // cout << "Cache's memory state: " << "[ ";
+
+            MemoryPage *memoryPage = cache.memory.head;
+
+            while (memoryPage != NULL) {
+                //cout << memoryPage->key << " => " << memoryPage->data << ", ";
+                memoryPage = memoryPage->next;
+            }
+
+            //cout << "]" << endl;
+        }
+
+        void dumpIndex() {
+            //cout << "Cache's index state: " << "[  ";
+
+            for (CacheIndex::iterator indexEntry = cache.index.begin();
+                indexEntry != cache.index.end(); ++indexEntry) {}
+                //cout << indexEntry->first << " => " << indexEntry->second << ",  ";
+
+            //cout << "]" << endl;
+        }
+    public:
+        BufferPool(unsigned _capacity) {
+            capacity = _capacity;
+            build(capacity);
+        }
+
+        void build(unsigned n) {
+            // if (n > 0)
+            //     // cout << "Building a LRU Cache with capacity for " << n << " entries..." << endl;
+            // else
+                // cout << "Setting cache into a new empty state..." << endl;
+
+            cache.capacity = n;
+
+            for (CacheIndex::iterator indexEntry = cache.index.begin();
+                indexEntry != cache.index.end(); ++indexEntry) {
+                cache.index.erase(indexEntry->first);
+                delete (indexEntry->second);
+            }
+
+            cache.memory.head = cache.memory.tail = NULL;
+            dump();
+            dumpIndex();
+        }
+
+        void destruct() {
+            cout << "Destructing LRU Cache along with all data related to it..." << endl;
+            build(0);
+        }
+
+        void add(unsigned key, string data) {
+            //cout << "Adding value '" << data << "' to key: " << key << endl;
+
+            CacheIndex::iterator indexEntry = cache.index.find(key);
+
+            if (indexEntry != cache.index.end()) {  // If cache has already an entry for the given key, then purges it from cache's memory first
+                //cout << "Key " << key << " has already an entry in the cache. Replacing it..." << endl;
+
+                //cache.index.erase(key);
+
+                bool isHead = false;
+                bool isTail = false;
+
+                if (cache.memory.head == indexEntry->second) {
+                    isHead = true;
+
+                    cache.memory.head = indexEntry->second->next;
+
+                    if (cache.memory.head != NULL) {
+                        cache.memory.head->prev = NULL;
+                    }
                 }
 
-                
+                if (cache.memory.tail == indexEntry->second) {
+                    isTail = true;
+                    cache.memory.tail = indexEntry->second->prev;
 
-                //indexIt();
-                
+                    if (cache.memory.tail != NULL) {
+                        cache.memory.tail->next = NULL;
+                    }
+                }
 
+                if (!isHead && !isTail) {
+                    indexEntry->second->prev->next = indexEntry->second->next;
+                    indexEntry->second->next->prev = indexEntry->second->prev;
+                }
 
-/*
-                r.feature_id = atol(feature_id.c_str());
-                r.feature_name = feature_name;
-                r.feature_class = feature_class;
-                r.state_alpha = state_alpha;
-                r.state_numeric = state_numeric;
-                r.county_name = county_name;
-                r.county_numeric = county_numeric;
-                r.prim_lat_dms = prim_lat_dms;
-                r.prim_long_dms = prim_long_dms;
-                r.prim_lat_dec = 
-                r.prim_long_dec = 
-
-                //cout << "-------------------------------------------" << endl;
-                cout << "F_ID: " << feature_id << endl;
-                cout << "F_N: " << feature_name << endl;
-                cout << "F_C: " << feature_class << endl;
-                cout << "S_A: " << state_alpha << endl;
-                cout << "S_N: " << state_numeric << endl;
-                cout << "C_NA: " << county_name << endl;
-                cout << "C_NU: " << county_numeric << endl;
-
-                cout << "S_LAT_DMS: " << source_lat_dms << endl;
-                cout << "S_LON_DMS: " << source_long_dms << endl;
-
-                cout << "F_ID: " << r.feature_id << endl;
-                cout << "F_N: " << r.feature_name << endl;
-                cout << "F_C: " << r.feature_class << endl;
-                cout << "S_A: " << r.state_alpha << endl;
-                cout << "S_N: " << r.state_numeric << endl;
-                cout << "C_NA: " << r.county_name << endl;
-                cout << "C_NU: " << r.county_numeric << endl;
-
-                cout << "S_LAT_DMS: " << r.source_lat_dms << endl;
-                cout << "S_LON_DMS: " << r.source_long_dms << endl;
-
-                cout << "-------------------------------------------" << endl;
-*/
+                delete (indexEntry->second);
+            } else if (full()) { // If cache has not the entry fro the given key yet, and it is full, then makes a room by removing the page at last position in cache's memory
+                makeARoom();
             }
-                
-        }
-        coordinateIt();
-    }
 
-    void indexIt(void) {
-        for (int i = 0; i < (int) all.size(); i++) {
-            string entry = "[" + all[i].feature_name + ":" + all[i].state_alpha + ", [" + std::to_string(i) + "]]";
-            nameIndex->insert(entry);
-        }
-    }
+            // Creates a new memory page node with given key and data,
+            // and adds it to the first position in cache's memory
+            MemoryPage *newPage = newMemoryPage(key, data);
+            newPage->next = cache.memory.head;
 
+            if (empty()) {  // If queue is empty, makes both pointers 'memory.head' and 'memory.tail' to point to the address of the newly created page
+                cache.memory.head = cache.memory.tail = newPage;
+            } else { // Otherwise, just makes 'memory.head' pointing to the new page and updates the property 'prev' of the page that was at memory head
+                cache.memory.head->prev = newPage;
+                cache.memory.head = newPage;
+            }
 
-
-    void coordinateIt(void) {
-        PRQuadTree * center =  new PRQuadTree (Point(world->w_long, world->n_lat), Point(world->e_long, world->s_lat));
-
-        cout << "WORLD topLeft: ";
-        center->topLeft.printPoint();
-        cout << "\nWORLD botRight: ";
-        center->botRight.printPoint();
-        cout << endl;
-        for (int i = 0; i < (int) all.size(); i++) {
-
-            //cout << "y = " << dms2sec(all[i].prim_lat_dms) << " x = " << dms2sec(all[i].prim_long_dms) << endl;
-            Node node (Point(dms2sec(all[i].prim_long_dms), dms2sec(all[i].prim_lat_dms)), i);
-
-            //cout << "n printPoint = " << dms2sec(all[i].prim_long_dms);
-            //n.pos.printPoint();
-
-            center->insert(&node);
-            // if (i == 2)
-            //     exit(1);
-        }
-        
-        //cout << "Center.n->data = " << center->node->data << endl;
-        center->print();
-
-
-    }
-
-    void displayAll(void) {
-        for (vector<Record<string>>::iterator r = all.begin(); r != all.end(); ++r) {
-            
-            cout << "F_ID: " << r->feature_id << endl;
-            cout << "F_N: " << r->feature_name << endl;
-            cout << "F_C: " << r->feature_class << endl;
-            cout << "S_A: " << r->state_alpha << endl;
-            cout << "S_N: " << r->state_numeric << endl;
-            cout << "C_NA: " << r->county_name << endl;
-            cout << "C_NU: " << r->county_numeric << endl;
-
-            cout << "S_LAT_DMS: " << r->source_lat_dms << endl;
-            cout << "S_LON_DMS: " << r->source_long_dms << endl;
-            cout << "-------------------------------------------" << endl;
-        }
-    } 
-
-    void appendData(ofstream &db, Record<string> * r) {
-        /*
-            *db << r.feature_id << '|' <<
-                    r.feature_name << '|' << 
-                    r.feature_class << '|' <<
-                    r.state_alpha << '|' <<
-                    r.state_numeric << '|' <<
-                    r.county_name << '|' <<
-                    r.county_numeric << '|' <<
-                    r.prim_lat_dms << '|' <<
-                    r.prim_long_dms << '|' <<
-                    r.prim_lat_dec << '|' <<
-                    r.prim_long_dec << '|' <<
-                    r.source_lat_dms << '|' <<
-                    r.source_long_dms << '|' <<
-                    r.source_lat_dec << '|' <<
-                    r.source_long_dec << '|' <<
-                    r.elev_in_m << '|' <<
-                    r.elev_in_ft << '|' <<
-                    r.map_name << '|' <<
-                    r.date_created << '|' <<
-                    r.date_edited << '|' <<
-                    endl;
-        */
-        db << r->feature_id << '|' <<
-                r->feature_name << '|' << 
-                r->feature_class << '|' <<
-                r->state_alpha << '|' <<
-                r->state_numeric << '|' <<
-                r->county_name << '|' <<
-                r->county_numeric << '|' <<
-                r->prim_lat_dms << '|' <<
-                r->prim_long_dms << '|' <<
-                r->prim_lat_dec << '|' <<
-                r->prim_long_dec << '|' <<
-                r->source_lat_dms << '|' <<
-                r->source_long_dms << '|' <<
-                r->source_lat_dec << '|' <<
-                r->source_long_dec << '|' <<
-                r->elev_in_m << '|' <<
-                r->elev_in_ft << '|' <<
-                r->map_name << '|' <<
-                r->date_created << '|' <<
-                r->date_edited << '|' <<
-                endl;
-    }
-
-    void write2DB (void) {
-        ofstream db(dbName, ios::app);
-        cout << "Writing to DB" << endl;
-        //for (vector<Record<string>>::iterator r = all.begin(); r != all.end(); ++r) {
-        for (int i = 0; i < (int) all.size(); i++) {
-            appendData(db, &all[i]);
+            // Inserts the new page entry into cache's index container
+            cache.index[key] = newPage;
+            dump();
+            dumpIndex();
         }
 
-        db.close();
-    }
+        string get(unsigned key) {
+            cout << "Reading value from key: " << key << endl;
 
-    vector<Record<string>> getAllImportedRecords(void) {
-        return all;
-    }
+            CacheIndex::iterator indexEntry = cache.index.find(key);
 
-    void nameIndexDebug (void) {
-        nameIndex->displayData();
+            if (indexEntry != cache.index.end()) {
+                MemoryPage *foundMemoryPage = indexEntry->second;
+                if (foundMemoryPage !=
+                    cache.memory.head) { // The data for the key informed is there, but the page carrying it is not at the first position of cache's memory. So, updates it
+                    // Unties the requested page from its current location in cache's memory.
+                    foundMemoryPage->prev->next = foundMemoryPage->next;
+                    if (foundMemoryPage->next)
+                        foundMemoryPage->next->prev = foundMemoryPage->prev;
 
-        cout << "Imported feature by name: " << nameIndex->getNumOccupied() << endl;
-        cout << "Longest probe sequence: " << nameIndex->getMaxCollisions() << endl;
-        cout << "Current Table Size: " << nameIndex->getTableSize() << endl;
-        cout << "Average Name Length: " << nameIndex->getAverageNameLength() << endl;
-    }
+                    // If the requested page is at last position in cache's memory, then updates 'memory.tail' pointer as long as it is going to be moved to the first position now
+                    if (foundMemoryPage == cache.memory.tail) {
+                        cache.memory.tail = foundMemoryPage->prev;
+                        cache.memory.tail->next = NULL;
+                    }
 
+                    // Places the requested page before current first page in cache's memory
+                    foundMemoryPage->next = cache.memory.head;
+                    foundMemoryPage->prev = NULL;
 
-/*
-    void write2DB (GISRecord<string> * r) {
-        *db << r->feature_id << '|' <<
-        r->feature_name << '|' << 
-        r->feature_class << '|' <<
-        r->state_alpha << '|' <<
-        r->state_numeric << '|' <<
-        r->county_name << '|' <<
-        r->county_numeric << '|' <<
-        r->prim_lat_dms << '|' <<
-        r->prim_long_dms << '|' <<
-        r->prim_lat_dec << '|' <<
-        r->prim_long_dec << '|' <<
-        r->source_lat_dms << '|' <<
-        r->source_long_dms << '|' <<
-        r->source_lat_dec << '|' <<
-        r->source_long_dec << '|' <<
-        r->elev_in_m << '|' <<
-        r->elev_in_ft << '|' <<
-        r->map_name << '|' <<
-        r->date_created << '|' <<
-        r->date_edited << '|' <<
-        endl;
-    }
-*/
+                    // Makes 'prev' pointer of former first page pointing to the new first page
+                    foundMemoryPage->next->prev = foundMemoryPage;
 
+                    // Updates 'memory.head' pointer to the requested page's address
+                    cache.memory.head = foundMemoryPage;
+
+                    dump();
+                    dumpIndex();
+                }
+                return foundMemoryPage->data;
+            } else {
+                cerr << "Cache page fault: Key " << key << " does not exist in cache!" << endl;
+                throw std::invalid_argument("Unknown key!");
+            }
+        }
+    
+        string str() {
+            std::ostringstream os;
+            MemoryPage *tmp = cache.memory.head;
+            os << "MRU" << endl;
+
+            // setting starting position
+            // while (tmp->prev != NULL) {
+            //     tmp = tmp->prev;
+            // }
+
+            while (tmp != NULL) {
+                os << "\t" << tmp->key << ": " << tmp->data << endl;
+                tmp = tmp->next;
+            }
+            os << "LRU" << endl;
+
+            return os.str();
+        }
 };
 
 #endif

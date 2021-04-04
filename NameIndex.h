@@ -75,33 +75,41 @@ class NameIndex {
 
     vector<Status> entry_status;
 
+    vector<RecordIndex<K>> records;
+
+    set<string> features;
+
     HashFunction<K> * hash;
 
     ResolutionFunction * f;
 
     int collisions;
 
-    int num_occupied;
-
     void expandAndRehash() {
         vector<K> new_entries, tmp_entries;
+        vector<RecordIndex<K>> new_records, tmp_records;
         vector<Status> new_entry_status, tmp_entry_status;
 
         new_entries.resize(2 * c); // double size
         new_entry_status.resize(2 * c);
+        new_records.resize(2 * c);
 
         tmp_entries = entries;
         tmp_entry_status = entry_status;
+        tmp_records = new_records;
 
         entries = new_entries;
         entry_status = new_entry_status;
+        records = new_records;
 
         collisions = 0;
-        num_occupied = 0;
 
         for (int i = 0; i < c; i++) {
-            if (tmp_entry_status[i] == OCCUPIED)
-                insert(tmp_entries[i]);
+            if (tmp_entry_status[i] == OCCUPIED) {
+                // string key = "[" + records[i]record.feature_name + ":" + records[i]record.state_alpha + ", [" + std::to_string(records[i].index) + "]]";
+                //insert(tmp_entries[i]);
+                insert(records[i]);
+            }
         }
     }
 
@@ -114,13 +122,41 @@ public:
         f = new QuadraticProbing();
         entries.resize(c);
         entry_status.resize(c);
-
-        num_occupied = 0;
+        records.resize(c);
         collisions = 0;
     }
 
     ~NameIndex() {}
 
+    bool insert (const RecordIndex<K> recordIndex) {
+        string key = recordIndex.record.feature_name + "\t" + recordIndex.record.state_alpha;
+        features.insert(recordIndex.record.feature_name);
+
+        unsigned int h = hash->operator()(key) % c;
+        unsigned int i = 0;
+        unsigned int hi = h;
+        int collision = 0;
+        while (entry_status[hi] == OCCUPIED) {
+            h = f->operator()(hi);
+            if (entries[hi] == key) return false;
+            collision++;
+            if (collision > collisions) 
+                collisions = collision;
+            ++i;
+            hi = (h + i) % c;
+        }
+        entry_status[hi] = OCCUPIED;
+        entries[hi] = key;
+        records[hi] = recordIndex;
+        size++;
+
+        if (getLoadFactor(size, c) >= 0.7) {
+            expandAndRehash();
+        }
+
+        return true;
+    }
+/*
     bool insert (const K& key) {
         unsigned int h = hash->operator()(key) % c;
         unsigned int i = 0;
@@ -145,7 +181,35 @@ public:
 
         return true;
     }
+    RecordIndex<K> searchByFeature (const) {
+        unsigned int h = hash->operator()(key) % c;
+        unsigned int i = 0;
+        unsigned int hi = h;
+    }
 
+    RecordIndex<K> searchByState () {
+
+    }
+*/
+
+    RecordIndex<K> * search (const K& key) {
+        unsigned int h = hash->operator()(key) % c;
+        unsigned int i = 0;
+        unsigned int hi = h;
+
+        while (entry_status[hi] != EMPTY) {
+            if (entry_status[hi] == OCCUPIED && entries[hi] != key)
+                h = f->operator()(hi);
+            if (entry_status[hi] == OCCUPIED && entries[hi] == key) {
+                return &records[hi];
+            }
+            ++i;
+            hi = (h + i) % c;
+        }
+        return NULL;
+    }
+
+/*
     bool search (const K& key) {
         unsigned int h = hash->operator()(key) % c;
         unsigned int i = 0;
@@ -162,6 +226,7 @@ public:
         }
         return false;
     }
+*/
 
     bool erase (const K& key) {
         unsigned int h = hash->operator()(key) % c;
@@ -184,11 +249,14 @@ public:
         return (double) size / capacity;
     }
 
-    void displayData(void) {
+    string str(void) {
+        std::ostringstream os;
         for (int i = 0; i < c; i++) {
-            if (entry_status[i] == OCCUPIED)
-                cout << i << ": " << entries[i] << endl;
+            if (entry_status[i] == OCCUPIED) {
+                os << "	" << i << ": " << "[" << records[i].record.feature_name << ":" << records[i].record.state_alpha << ", [" << records[i].index << "]]" << endl;
+            }
         }
+        return os.str();
     }
 
     int getTableSize(void) {
@@ -206,12 +274,16 @@ public:
         return sum / count;
     }
 
-    int getNumOccupied(void) {
-        for (int i = 0; i < c; i++)
-            if (entry_status[i] == OCCUPIED)
-                num_occupied++;
+    int getNumFeatures(void) {
+        return features.size();
+    }
 
-        return num_occupied;
+    int getNumRecords(void) {
+        return records.size();
+    }
+
+    int getNumOccupied(void) {
+        return size;
     }
 
 

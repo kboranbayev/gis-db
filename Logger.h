@@ -22,19 +22,28 @@ public:
     }
 
     void dashes() {
-        *log << "------------------------------------------------------------------------------------------\n" << endl;
+        *log << "------------------------------------------------------------------------------------------" << endl;
     }
 
-    void logWorld(string command) {
+    void logWorld(string command, World world) {
         *log << command << endl;
         dashes();
         *log << "Latitude/longitude values in index entries are shown as signed integers, in total seconds." << endl;
         dashes();
-    } 
+        *log << "						World boundaries are set to:" << endl;
+        *log << "						           " << world.n_lat << endl;
+        *log << "						" << world.w_long << "              " << world.e_long << endl;
+        *log << "						           " << world.s_lat << endl;
+        dashes();
+    }
 
     void logCommand(string command, int commandNo) {
-        *log << "Command " << commandNo << ": " << command << endl;
         dashes();
+        *log << "Command " << commandNo << ": " << command << endl;
+    }
+
+    void logStr(string os) {
+        *log << endl << os;
     }
 
     void logComment(string comment) {
@@ -44,8 +53,8 @@ public:
     void logQuit(string command, int commandNo) {
         time_t now = time(0);
         *log << "Command " << commandNo << ": " << command << endl;
+        *log << "\nTerminating execution of commands." << endl;
         dashes();
-        *log << "Terminating execution of commands." << endl;
         *log << "End time: " <<  ctime(&now) << endl;
         log->close();
     }
