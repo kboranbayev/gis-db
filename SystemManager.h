@@ -13,9 +13,6 @@ class SystemManager {
 
     vector<Record<string>> buffer;
 
-    // vector<Record<string>> all;
-
-    //ofstream * db;
     World * world;
 
     string dbName;
@@ -33,9 +30,7 @@ public:
 
         if (db1.is_open())
             cout << "It is still open even if I did close.\n";
-        //db1.open(dbName.c_str(), ios::app);
 
-        //db = &db1;
         dbName = db_name;
         ifstream inFile(file); 
         
@@ -59,7 +54,7 @@ public:
         return size;
     }
 
-    string getDataByLine(int lineNo) {
+    string getDataByLine (int lineNo) {
         ifstream data(dbName);
         if (data.fail()) {
             cerr << "getDataByLine Error: file not found" << endl;
@@ -155,7 +150,6 @@ public:
 
     string import (string data_file_name) {
         std::ostringstream os;
-        //cout << "Importing |" << data_file_name << '|' << endl;
 
         ifstream data(data_file_name);
 
@@ -173,6 +167,7 @@ public:
             string source_lat_dms, source_long_dms, source_lat_dec, source_long_dec;
             string elec_in_m, elec_in_ft, map_name;
             string date_created, date_edited;
+            ClassType type;
             if (line.rfind("FEATURE_ID|") != 0) {
                 getline(iss, feature_id, '|');
                 getline(iss, feature_name, '|');
@@ -189,15 +184,13 @@ public:
                 getline(iss, source_long_dms, '|');
                 getline(iss, source_lat_dec, '|');
                 getline(iss, source_long_dec, '|');
-                getline(iss, source_lat_dms, '|');
-                getline(iss, source_long_dms, '|');
                 getline(iss, elec_in_m, '|');
                 getline(iss, elec_in_ft, '|');
                 getline(iss, map_name, '|');
                 getline(iss, date_created, '|');
                 getline(iss, date_edited, '|');
-                
 
+                type = setClassType(feature_class);
 
                 Record<string> r {
                     atol(feature_id.c_str()),
@@ -219,7 +212,8 @@ public:
                     elec_in_ft,
                     map_name,
                     date_created,
-                    date_edited 
+                    date_edited,
+                    type
                 };
 
                 if (dms2sec(prim_lat_dms) < world->n_lat && dms2sec(prim_lat_dms) > world->s_lat && 
@@ -232,58 +226,11 @@ public:
                 }
             }       
         }
-        os << endl << "Imported Features by name: " << nameIndex->getNumFeatures() << endl;
+        os << "Imported Features by name: " << nameIndex->getNumFeatures() << endl;
         os << "Longest probe sequence: " << nameIndex->getMaxCollisions() << endl;
         os << "Imported Locations: " << nameIndex->getNumOccupied() << endl;
         os << "Average Name Length: " << nameIndex->getAverageNameLength() << endl;
         return os.str();
-    }
-
-    void appendData(ofstream &db, Record<string> * r) {
-        /*
-            *db << r.feature_id << '|' <<
-                    r.feature_name << '|' << 
-                    r.feature_class << '|' <<
-                    r.state_alpha << '|' <<
-                    r.state_numeric << '|' <<
-                    r.county_name << '|' <<
-                    r.county_numeric << '|' <<
-                    r.prim_lat_dms << '|' <<
-                    r.prim_long_dms << '|' <<
-                    r.prim_lat_dec << '|' <<
-                    r.prim_long_dec << '|' <<
-                    r.source_lat_dms << '|' <<
-                    r.source_long_dms << '|' <<
-                    r.source_lat_dec << '|' <<
-                    r.source_long_dec << '|' <<
-                    r.elev_in_m << '|' <<
-                    r.elev_in_ft << '|' <<
-                    r.map_name << '|' <<
-                    r.date_created << '|' <<
-                    r.date_edited << '|' <<
-                    endl;
-        */
-        db << r->feature_id << '|' <<
-                r->feature_name << '|' << 
-                r->feature_class << '|' <<
-                r->state_alpha << '|' <<
-                r->state_numeric << '|' <<
-                r->county_name << '|' <<
-                r->county_numeric << '|' <<
-                r->prim_lat_dms << '|' <<
-                r->prim_long_dms << '|' <<
-                r->prim_lat_dec << '|' <<
-                r->prim_long_dec << '|' <<
-                r->source_lat_dms << '|' <<
-                r->source_long_dms << '|' <<
-                r->source_lat_dec << '|' <<
-                r->source_long_dec << '|' <<
-                r->elev_in_m << '|' <<
-                r->elev_in_ft << '|' <<
-                r->map_name << '|' <<
-                r->date_created << '|' <<
-                r->date_edited << '|' <<
-                endl;
     }
 
     void writeLine2DB (string line) {
@@ -294,7 +241,7 @@ public:
 
     string hashDebug (void) {
         std::ostringstream os;
-        os << endl << "Format display is " << endl;
+        os << "Format display is " << endl;
         os << "Slot number: " << "data record" << endl;
         os << "Current table size is " << nameIndex->getTableSize() << endl;
         os << "Number of elements in table is " << nameIndex->getNumOccupied() << endl << endl;
@@ -321,18 +268,147 @@ public:
             os << "\tThe following feature(s) were found at (" << printDMS(longitude) << ", " << printDMS(latitude) << ")" << endl;
             cout << "\tThe following feature(s) were found at (" << printDMS(longitude) << ", " << printDMS(latitude) << ")" << endl;
             for (auto & r : result) {
-                os << "\t" << r.index << ":\t\"" << r.record.feature_name << "\"\t\"" << r.record.county_name << "\"\t" << r.record.state_alpha << "\"" << endl;
-                cout << "\t" << r.index << ":\t\"" << r.record.feature_name << "\"\t\"" << r.record.county_name << "\"\t" << r.record.state_alpha << "\"" << endl;
+                os << "\t" << r.index << ":\t\"" << r.record.feature_name << "\"\t\"" << r.record.county_name << "\"\t\"" << r.record.state_alpha << "\"" << endl;
+                cout << "\t" << r.index << ":\t\"" << r.record.feature_name << "\"\t\"" << r.record.county_name << "\"\t\"" << r.record.state_alpha << "\"" << endl;
                 pool->add(r.index, getDataByLine(r.index));
             }
-            // os << "\t" << finder->data << ":\t\"" << finder->record->feature_name << "\"\t\"" << finder->record->county_name << "\"\t" << finder->record->state_alpha << "\"" << endl;
-            // cout << "\t" << finder->data << ":\t\"" << finder->record->feature_name << "\"\t\"" << finder->record->county_name << "\"\t" << finder->record->state_alpha << "\"" << endl;
-            // pool->add(finder->data, getDataByLine(finder->data));
         } else {
             os << "\tNothing was found at (" << printDMS(longitude) << ", " << printDMS(latitude) << ")" << endl;
             cout << "\tNothing was found at (" << printDMS(longitude) << ", " << printDMS(latitude) << ")" << endl;
         }
         return os.str();
+    }
+
+
+    string whatIsIn (string longitude, string latitude, string halfheight, string halfwidth) {
+        std::ostringstream os;
+
+        std::string::size_type sz;
+
+        long lat = dms2sec(latitude);
+        long lon = dms2sec(longitude);
+        
+        long x0 = (lon > 0) ? lon - stol (halfheight, &sz) : lon + stol (halfheight, &sz);
+        long y0 = (lat > 0) ? lat + stol (halfwidth, &sz) : lat + stol (halfwidth, &sz);
+
+        long x1 = (lon > 0) ? lon + stol (halfheight, &sz) : lon - stol (halfheight, &sz);
+        long y1 = (lat > 0) ? lat - stol (halfwidth, &sz) : lat - stol (halfwidth, &sz);
+    
+        vector<RecordIndex<string>> result;
+
+        for (long i = x0; i <= x1; i++) {
+            for (long j = y0; j >= y1; j--) {
+                vector<RecordIndex<string>> tmp = coordinateIndex->search(Point(j,i));
+        
+                if (tmp.size() != 0) {
+                    for (auto & r : tmp)
+                        result.push_back(r);
+                }
+            }
+        }
+
+        if (result.size() != 0) {
+            os << "\tThe following " << result.size() << " feature(s) were found in (" << printDMS(longitude) << " +/- " << halfheight << ", " << printDMS(latitude) << " +/- " << halfwidth << ")\n" << endl;
+            cout << "\tThe following " << result.size() << " feature(s) were found in (" << printDMS(longitude) << " +/- " << halfheight << ", " << printDMS(latitude) << " +/- " << halfwidth << ")\n" << endl;
+            for (auto & r : result) {
+                os << "\t" << r.index << ":\t\"" << r.record.feature_name << "\"\t\"" << r.record.state_alpha << "\"\t\"(" << printDMS(r.record.prim_lat_dms) << ", " << printDMS(r.record.prim_long_dms) << ")\"" << endl;
+                cout << "\t" << r.index << ":\t\"" << r.record.feature_name << "\"\t\"" << r.record.state_alpha << "\"\t\"(" << printDMS(r.record.prim_lat_dms) << ", " << printDMS(r.record.prim_long_dms) << ")\"" << endl;
+                pool->add(r.index, getDataByLine(r.index));
+            }
+        } else {
+            os << "\tNothing was found in (\"" << printDMS(longitude) << " +/- " << halfheight << "\", \"" << printDMS(latitude) << " +/- " << halfwidth << "\")" << endl;
+            cout << "\tNothing was found in (\"" << printDMS(longitude) << " +/- " << halfheight << "\", \"" << printDMS(latitude) << " +/- " << halfwidth << "\")" << endl;
+        }
+
+        return os.str(); 
+    }
+
+    string whatIsInFilter (string longitude, string latitude, string halfheight, string halfwidth, string type) {
+        std::ostringstream os;
+
+        std::string::size_type sz;
+
+        long lat = dms2sec(latitude);
+        long lon = dms2sec(longitude);
+        
+        long x0 = (lon > 0) ? lon - stol (halfheight, &sz) : lon + stol (halfheight, &sz);
+        long y0 = (lat > 0) ? lat + stol (halfwidth, &sz) : lat + stol (halfwidth, &sz);
+
+        long x1 = (lon > 0) ? lon + stol (halfheight, &sz) : lon - stol (halfheight, &sz);
+        long y1 = (lat > 0) ? lat - stol (halfwidth, &sz) : lat - stol (halfwidth, &sz);
+    
+        vector<RecordIndex<string>> result;
+
+        for (long i = x0; i <= x1; i++) {
+            for (long j = y0; j >= y1; j--) {
+                vector<RecordIndex<string>> tmp = coordinateIndex->search(Point(j,i));
+        
+                if (tmp.size() != 0) {
+                    for (auto & r : tmp)
+                        if (r.record.type == getClassType(type))
+                            result.push_back(r);
+                }
+            }
+        }
+
+        if (result.size() != 0) {
+            os << "\tThe following features matching your criteria were found in (" << printDMS(longitude) << " +/- " << halfheight << ", " << printDMS(latitude) << " +/- " << halfwidth << ")\n" << endl;
+            cout << "\tThe following features matching your criteria were found in (" << printDMS(longitude) << " +/- " << halfheight << ", " << printDMS(latitude) << " +/- " << halfwidth << ")\n" << endl;
+            for (auto & r : result) {
+                os << "\t" << r.index << ":\t\"" << r.record.feature_name << "\"\t\"" << r.record.state_alpha << "\"\t\"(" << printDMS(r.record.prim_lat_dms) << ", " << printDMS(r.record.prim_long_dms) << ")\"" << endl;
+                cout << "\t" << r.index << ":\t\"" << r.record.feature_name << "\"\t\"" << r.record.state_alpha << "\"\t\"(" << printDMS(r.record.prim_lat_dms) << ", " << printDMS(r.record.prim_long_dms) << ")\"" << endl;
+                pool->add(r.index, getDataByLine(r.index));
+            }
+            os << "\n\tThere were " << result.size() << " features of type " << type << "." << endl;
+            cout << "\n\tThere were " << result.size() << " features of type " << type << "." << endl;
+        } else {
+            os << "\tNothing was found in (\"" << printDMS(longitude) << " +/- " << halfheight << "\", \"" << printDMS(latitude) << " +/- " << halfwidth << "\")" << endl;
+            cout << "\tNothing was found in (\"" << printDMS(longitude) << " +/- " << halfheight << "\", \"" << printDMS(latitude) << " +/- " << halfwidth << "\")" << endl;
+        }
+
+        return os.str();
+    }
+
+    string whatIsInLong (string longitude, string latitude, string halfheight, string halfwidth) {
+        std::ostringstream os;
+
+        std::string::size_type sz;
+
+        long lat = dms2sec(latitude);
+        long lon = dms2sec(longitude);
+        
+        long x0 = (lon > 0) ? lon - stol (halfheight, &sz) : lon + stol (halfheight, &sz);
+        long y0 = (lat > 0) ? lat + stol (halfwidth, &sz) : lat + stol (halfwidth, &sz);
+
+        long x1 = (lon > 0) ? lon + stol (halfheight, &sz) : lon - stol (halfheight, &sz);
+        long y1 = (lat > 0) ? lat - stol (halfwidth, &sz) : lat - stol (halfwidth, &sz);
+    
+        vector<RecordIndex<string>> result;
+
+        for (long i = x0; i <= x1; i++) {
+            for (long j = y0; j >= y1; j--) {
+                vector<RecordIndex<string>> tmp = coordinateIndex->search(Point(j,i));
+        
+                if (tmp.size() != 0) {
+                    for (auto & r : tmp)
+                        result.push_back(r);
+                }
+            }
+        }
+
+        if (result.size() != 0) {
+            os << "\tThe following " << result.size() << " feature(s) were found in (" << printDMS(longitude) << " +/- " << halfheight << ", " << printDMS(latitude) << " +/- " << halfwidth << ")\n" << endl;
+            cout << "\tThe following " << result.size() << " feature(s) were found in (" << printDMS(longitude) << " +/- " << halfheight << ", " << printDMS(latitude) << " +/- " << halfwidth << ")\n" << endl;
+            for (auto & r : result) {
+                os << printLong(r.record) << endl;
+                pool->add(r.index, getDataByLine(r.index));
+            }
+        } else {
+            os << "\tNothing was found in (\"" << printDMS(longitude) << " +/- " << halfheight << "\", \"" << printDMS(latitude) << " +/- " << halfwidth << "\")" << endl;
+            cout << "\tNothing was found in (\"" << printDMS(longitude) << " +/- " << halfheight << "\", \"" << printDMS(latitude) << " +/- " << halfwidth << "\")" << endl;
+        }
+
+        return os.str(); 
     }
 
     string whatIs (string feature, string state) {
@@ -356,33 +432,6 @@ public:
         cout << pool->str() << endl; 
         return pool->str();
     }
-
-/*
-    void write2DB (GISRecord<string> * r) {
-        *db << r->feature_id << '|' <<
-        r->feature_name << '|' << 
-        r->feature_class << '|' <<
-        r->state_alpha << '|' <<
-        r->state_numeric << '|' <<
-        r->county_name << '|' <<
-        r->county_numeric << '|' <<
-        r->prim_lat_dms << '|' <<
-        r->prim_long_dms << '|' <<
-        r->prim_lat_dec << '|' <<
-        r->prim_long_dec << '|' <<
-        r->source_lat_dms << '|' <<
-        r->source_long_dms << '|' <<
-        r->source_lat_dec << '|' <<
-        r->source_long_dec << '|' <<
-        r->elev_in_m << '|' <<
-        r->elev_in_ft << '|' <<
-        r->map_name << '|' <<
-        r->date_created << '|' <<
-        r->date_edited << '|' <<
-        endl;
-    }
-*/
-
 };
 
 #endif

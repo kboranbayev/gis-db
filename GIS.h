@@ -21,13 +21,13 @@
 #define INITIAL_TABLE_SIZE  1024
 #define BUFFER_SIZE 15
 
-#define INFO "Course Project for COMP 8042\nStudent Name: Kuanysh Boranbayev, Student Id: A00978727\n"
+#define INFO "Course Project for COMP 8042\nStudent Name: Kuanysh Boranbayev, Student Id: A00978727"
 
 using namespace std;
 
 enum Command {WORLD, IMPORT, DEBUG, QUIT, WHAT_IS, WHAT_IS_AT, WHAT_IS_IN, IGNORE};
 
-
+enum ClassType {STRUCTURE, WATER, POP, UNKNOWN};
 
 struct World {
     long w_long;
@@ -58,6 +58,7 @@ struct Record {
     K map_name;
     K date_created;
     K date_edited;
+    ClassType type;
 };
 
 template <typename K>
@@ -65,6 +66,8 @@ struct RecordIndex {
     Record<K> record;
     int index;
 };
+
+
 
 
 string printDMS (string dms) {
@@ -188,6 +191,71 @@ long dms2sec (string dms) {
     res = res * sign;
 
     return res;
+}
+
+string printLong (Record<string> r) {
+    std::ostringstream os;
+
+    os << "\tFeature ID   : " << r.feature_id << endl;
+    os << "\tFeature Name : " << r.feature_name << endl;
+    os << "\tFeature Cat  : " << r.feature_class << endl;
+    os << "\tState        : " << r.state_alpha << endl;
+    os << "\tCounty       : " << r.county_name << endl;
+    os << "\tLongitude    : " << printDMS(r.prim_long_dms) << endl;
+    os << "\tLatitude     : " << printDMS(r.prim_lat_dms) << endl;
+    os << "\tElev in ft   : " << r.elev_in_ft << endl;
+    os << "\tUSGS Quad    : " << r.map_name << endl;
+    os << "\tDate created : " << r.date_created << endl;
+
+    return os.str();
+}
+
+ClassType getClassType (string c) {
+    if (c == "structure")
+        return STRUCTURE;
+    if (c == "water")
+        return WATER;
+    if (c == "pop")
+        return POP;
+    return UNKNOWN;
+}
+
+ClassType setClassType (string c) {
+    if (c == "Airport" || 
+        c == "Bridge" || 
+        c == "Building" ||
+        c == "Church" ||
+        c == "Dam" ||
+        c == "Hospital" ||
+        c == "Levee" ||
+        c == "Park" ||
+        c == "Post Office" ||
+        c == "School" ||
+        c == "Tower" ||
+        c == "Tunnel")
+        return STRUCTURE;
+    if (c == "Populated Place")
+        return POP;
+    if (c == "Arroyo" ||
+        c == "Bay" ||
+        c == "Bend" ||
+        c == "Canal" ||
+        c == "Channel" ||
+        c == "Falls" ||
+        c == "Glacier" ||
+        c == "Gut" ||
+        c == "Harbor" ||
+        c == "Lake" ||
+        c == "Rapids" ||
+        c == "Reservoir" ||
+        c == "Sea" ||
+        c == "Spring" ||
+        c == "Stream" ||
+        c == "Swamp" ||
+        c == "Well"
+        )
+        return WATER;
+    return UNKNOWN;
 }
 
 #endif

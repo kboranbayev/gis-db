@@ -96,16 +96,10 @@ class CoordinateIndex {
         string str () {
             std::ostringstream os;
             
-            if (root == NULL) return "";
-
-            if (root != NULL) {
-                if (root->isLeaf) {
-                    os << root->str() << "\t";
-                }
-                
+            if (root == NULL) return "*\n\t";
+ 
+                Node<K> * tmp = root;
                 if (!root->isLeaf) {
-                    os << "@" << endl << "\t\t";
-                    Node<K> * tmp = root;
                     if (root->nw != NULL) {
                         root = root->nw;
                         os << "\t" << str();    
@@ -120,6 +114,14 @@ class CoordinateIndex {
                         os << "\t*" << endl;
                     }
                     root = tmp;
+                }
+
+                if (root->isLeaf) {
+                    os << root->str() << "\t";
+                }
+
+                if (!root->isLeaf) {                
+                    os << "@" << endl << "\t\t";
                     if (root->sw != NULL) {
                         root = root->sw;
                         os << "\t" << str();    
@@ -136,7 +138,7 @@ class CoordinateIndex {
                     
                     root = tmp;
                 }
-            }
+
 
             return os.str();
         } 
@@ -185,10 +187,11 @@ class CoordinateIndex {
                 }   
                 root = tmp;
             }
-        }
-        
 
-        // void insert (Point _p, int _lineNo, Record<K> _record) {
+            root->coordinates.clear();
+            root->records.clear();
+        }
+
         void insert (Point _p, RecordIndex<K> _record) {
             if (!inBoundary(_p)) {
                 cerr << "Not in World boundary" << endl;
@@ -219,7 +222,6 @@ class CoordinateIndex {
                     Node<K> * tmp = root;
                     if (root->topLeft.x <= _p.x && _p.x <= newX)
                     {
-                        // Indicates topLeftTree
                         if (root->topLeft.y >= _p.y && _p.y >= newY) {
                             if (root->nw == NULL) {
                                 root->nw = new Node<K> (Point(root->topLeft.x, root->topLeft.y), Point(newX, newY));

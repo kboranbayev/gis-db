@@ -49,7 +49,7 @@ public:
     void processCommand(string cmd) {
         istringstream iss(cmd);
         string import_file_name;
-        string param1, param2, param3;
+        string param1, param2, param3, param4, param5, param6, param7;
 
         switch (processCommandString(cmd)) {
             case WORLD:
@@ -69,17 +69,15 @@ public:
                 break;
             case IMPORT:
                 numCommands++;
+                log->dashes();
                 log->logCommand(cmd, numCommands);
                 getline(iss, import_file_name, '\t');
                 getline(iss, import_file_name, '\t');
                 cout << "File:" << import_file_name << "|" << endl;
 
                 sys = new SystemManager(dbName, &world, import_file_name);
-                cout << "F" << endl;
                 log->logStr(sys->import(import_file_name));
-                cout << "T" << endl;
-                log->dashes();
-                sys->str();
+
                 break;
             case DEBUG:
                 numCommands++;
@@ -97,7 +95,7 @@ public:
                 if (param2 == "quad") {
                     log->logStr(sys->quadDebug());
                 }
-
+                log->dashes();
                 break;
             case QUIT:
                 numCommands++;
@@ -113,9 +111,9 @@ public:
                 log->logCommand(cmd, numCommands);
                 
                 log->logStr(sys->whatIs(param2, param3));
+                log->dashes();
                 break;
             case WHAT_IS_AT:
-                numCommands++;
                 numCommands++;
                 getline(iss, param1, '\t');
                 getline(iss, param2, '\t');
@@ -124,11 +122,32 @@ public:
                 log->logCommand(cmd, numCommands);
 
                 log->logStr(sys->whatIsAt(param2, param3));
-                
+
+                log->dashes();
                 break;
             case WHAT_IS_IN:
                 numCommands++;
-                
+                getline(iss, param1, '\t');
+                getline(iss, param2, '\t');
+                getline(iss, param3, '\t');
+                getline(iss, param4, '\t');
+                getline(iss, param5, '\t');
+                getline(iss, param6, '\t');
+                getline(iss, param7, '\t');
+
+                log->logCommand(cmd, numCommands);
+
+                if (param2.rfind("-long") == 0) {
+                    cout << "-long" << endl;
+                    log->logStr(sys->whatIsInLong(param3, param4, param5, param6));
+                } else if (param2.rfind("-filter") == 0) {
+                    cout << "-filter" << endl;
+                    log->logStr(sys->whatIsInFilter(param4, param5, param6, param7, param3));
+                } else {
+                    log->logStr(sys->whatIsIn(param2, param3, param4, param5));
+                }
+
+                log->dashes();
                 break;
             default:
                 log->logComment(cmd);

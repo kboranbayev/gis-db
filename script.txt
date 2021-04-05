@@ -68,33 +68,3 @@ what_is_in	-filter	pop	382000N	0793530W	3600	3600
 ;
 debug	pool
 ; Let's import a larger dataset [wait a second, VA_Bath has 520 records, why didn't all of them get imported? explain this in your report]
-import	./VA_Bath.txt
-; as import command bypasses the buffer pool, content of the buffer pool should remain intact
-debug	pool
-;
-; Exiting
-quit
-;
-; From this point on all of the commands will be ignored, you can use the following large dataset to test your implemented software
-; To consider this file please use the following world command at the beginning of this file
-; world	1130000W	0690000W	300000N	440000N
-import	CO_All.txt
-;
-; And some searches; let's see if you're taking the state abbreviation into account:
-what_is	Lincoln	CO
-what_is	Lincoln	NM
-;
-; Let's try spanning the border:
-what_is_in	365800N	1043030W	720	45
-;
-; Let's try a larger region and filter the results:
-what_is_in	-filter	water	370000N	1040000W	600	600
-what_is_in	-filter	pop	370000N	1040000W	600	600
-what_is_in	-filter	structure	370000N	1040000W	600	600
-;
-; And some more or less random searches:
-what_is	Slab Mill Gulch	CO
-what_is	Kemper School	CO
-what_is_at	380806N	1073426W
-what_is_at	371010N	1043002W
-what_is_at	402906N	1064954W

@@ -38,7 +38,6 @@ public:
     }
 
     void logCommand(string command, int commandNo) {
-        dashes();
         *log << "Command " << commandNo << ": " << command << endl;
     }
 
