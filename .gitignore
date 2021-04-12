@@ -9,4 +9,9 @@
 GIS
 gis
 gis/*
+unused
+unused/*
+tests/
 
+# Ignore zip 
+*.zip
