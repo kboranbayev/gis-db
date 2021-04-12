@@ -1,27 +1,21 @@
 #ifndef GIS_H
 #define GIS_H
 
-//#include <gtest/gtest.h>
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <iomanip>
-#include <math.h>
-#include <random>
 #include <ctime>
-#include <cstring>
+#include <vector>
 #include <set>
+#include <map>           // used for buffer pool only
 
-#include <algorithm>    // used for counting line numbers in a file
 
-#include<map>
-
-#define INT_PART 3
-#define DEC_PART 2
+#define INT_PART            3
+#define DEC_PART            2
 #define INITIAL_TABLE_SIZE  1024
-#define BUFFER_SIZE 15
+#define BUFFER_SIZE         15
 
-#define INFO "Course Project for COMP 8042\nStudent Name: Kuanysh Boranbayev, Student Id: A00978727"
+#define INFO                "Course Project for COMP 8042\nStudent Name: Kuanysh Boranbayev, Student Id: A00978727"
 
 using namespace std;
 
@@ -63,12 +57,10 @@ struct Record {
 
 template <typename K>
 struct RecordIndex {
-    Record<K> record;
-    int index;
+    K feature_name;
+    K state_alpha;
+    long index;
 };
-
-
-
 
 string printDMS (string dms) {
     string res;
@@ -86,7 +78,6 @@ string printDMS (string dms) {
 
     dms.pop_back();
     if (dms.at(0) == '0') {
-        //cout << "Zero at front " << endl;
         dms.replace(0,1,"");
     }
     
@@ -141,10 +132,8 @@ long dms2sec (string dms) {
     
     if (dms.at(dms.length() - 1) == 'W' || dms.at(dms.length() - 1) == 'S')
         sign = -1;
-    //string st = dms.substr(0, dms.size() - 1);
     dms.pop_back();
     if (dms.at(0) == '0') {
-        //cout << "Zero at front " << endl;
         dms.replace(0,1,"");
     }
     
@@ -189,7 +178,6 @@ long dms2sec (string dms) {
     }
 
     res = res * sign;
-
     return res;
 }
 

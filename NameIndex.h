@@ -1,30 +1,26 @@
 #ifndef NAMEINDEX_H
 #define NAMEINDEX_H
 
-#include "GIS.h"
+#include "GISRecord.h"
 
 using namespace std;
 
 template <typename K>
 class HashFunction {
 public:
-    virtual unsigned int operator()(const K& key) const = 0;
+    virtual unsigned long operator()(const K& key) const = 0;
     virtual ~HashFunction() = default;
 };
 
 class SimpleStringHash : public HashFunction<string> {
 public:
     // Computes a simple hash value for a string
-    unsigned int operator()(const string& s) const {
-        // unsigned int hash = 0;
-        // for (unsigned int i = 0; i < s.size(); i++) {
-        //     hash += s[i];
-        // }
+    unsigned long operator()(const string& s) const {
         // BEGIN: ELF hash
-        unsigned int hash = 0;
-        unsigned int x = 0;
-        unsigned int i = 0;
-        unsigned int len = s.length();
+        unsigned long hash = 0;
+        unsigned long x = 0;
+        unsigned long i = 0;
+        unsigned long len = s.length();
 
         for (i = 0; i < len; i++)
         {
@@ -43,33 +39,24 @@ public:
 /// An abstract collision resolution function
 class ResolutionFunction {
 public:
-    virtual unsigned int operator()(int i) const = 0;
+    virtual unsigned long operator()(long i) const = 0;
     virtual ~ResolutionFunction() = default;
 };
 
 class QuadraticProbing : public ResolutionFunction {
 public:
-    unsigned int operator()(int i) const {
+    unsigned long operator()(long i) const {
         return (i * i + i) / 2;
     }
 };
-
-int mostSignificantBit(int x) {
-    if (x == 0)
-        return 0;
-    int mostSignificantBit = 31;
-    while ((x & (1 << mostSignificantBit)) == 0)
-        mostSignificantBit--;
-    return mostSignificantBit;
-}
 
 template <typename K>
 class NameIndex {
     enum Status {EMPTY, OCCUPIED, DELETED};
 
-    int c;
+    long c;
 
-    int size;
+    long size;
 
     vector<K> entries;
 
@@ -83,7 +70,7 @@ class NameIndex {
 
     ResolutionFunction * f;
 
-    int collisions;
+    long collisions;
 
     void expandAndRehash() {
         vector<K> new_entries, tmp_entries;
@@ -94,28 +81,37 @@ class NameIndex {
         new_entry_status.resize(2 * c);
         new_records.resize(2 * c);
 
+        c = 2 * c;
+        size = 0;
+
         tmp_entries = entries;
         tmp_entry_status = entry_status;
-        tmp_records = new_records;
+        tmp_records = records;
 
         entries = new_entries;
         entry_status = new_entry_status;
         records = new_records;
 
-        collisions = 0;
+        for (auto & s : entry_status)
+            s = EMPTY;
 
-        for (int i = 0; i < c; i++) {
+        for (auto & r : records)
+            r.index = -1;
+
+        collisions = 0;
+        
+        for (long i = 0; i < c; i++) {
             if (tmp_entry_status[i] == OCCUPIED) {
-                // string key = "[" + records[i]record.feature_name + ":" + records[i]record.state_alpha + ", [" + std::to_string(records[i].index) + "]]";
-                //insert(tmp_entries[i]);
-                insert(records[i]);
+                insert(tmp_records[i]);
             }
         }
+        tmp_entries.clear();
+        tmp_entry_status.clear();
+        tmp_records.clear();
     }
 
 public:
-    NameIndex (int n) {
-        //int msb = mostSignificantBit(n);
+    NameIndex (long n) {
         c = n;
         size = 0;
         hash = new SimpleStringHash();
@@ -123,19 +119,25 @@ public:
         entries.resize(c);
         entry_status.resize(c);
         records.resize(c);
+
+        for (auto & s : entry_status)
+            s = EMPTY;
+
+        for (auto & r : records)
+            r.index = -1;
+        
         collisions = 0;
     }
 
     ~NameIndex() {}
 
     bool insert (const RecordIndex<K> recordIndex) {
-        string key = recordIndex.record.feature_name + "\t" + recordIndex.record.state_alpha;
-        features.insert(recordIndex.record.feature_name);
-
-        unsigned int h = hash->operator()(key) % c;
-        unsigned int i = 0;
-        unsigned int hi = h;
-        int collision = 0;
+        string key = recordIndex.feature_name + "\t" + recordIndex.state_alpha;
+        features.insert(recordIndex.feature_name);
+        unsigned long h = hash->operator()(key) % c;
+        unsigned long i = 0;
+        unsigned long hi = h;
+        long collision = 0;
         while (entry_status[hi] == OCCUPIED) {
             h = f->operator()(hi);
             if (entries[hi] == key) return false;
@@ -145,6 +147,7 @@ public:
             ++i;
             hi = (h + i) % c;
         }
+        
         entry_status[hi] = OCCUPIED;
         entries[hi] = key;
         records[hi] = recordIndex;
@@ -153,85 +156,35 @@ public:
         if (getLoadFactor(size, c) >= 0.7) {
             expandAndRehash();
         }
+        
 
         return true;
     }
-/*
-    bool insert (const K& key) {
-        unsigned int h = hash->operator()(key) % c;
-        unsigned int i = 0;
-        unsigned int hi = h;
-        int collision = 0;
-        while (entry_status[hi] == OCCUPIED) {
-            h = f->operator()(hi);
-            if (entries[hi] == key) return false;
-            collision++;
-            if (collision > collisions) 
-                collisions = collision;
-            ++i;
-            hi = (h + i) % c;
-        }
-        entry_status[hi] = OCCUPIED;
-        entries[hi] = key;
-        size++;
 
-        if (getLoadFactor(size, c) >= 0.7) {
-            expandAndRehash();
-        }
+    RecordIndex<K> search (const K& key) {
+        RecordIndex<K> empty;
 
-        return true;
-    }
-    RecordIndex<K> searchByFeature (const) {
-        unsigned int h = hash->operator()(key) % c;
-        unsigned int i = 0;
-        unsigned int hi = h;
-    }
-
-    RecordIndex<K> searchByState () {
-
-    }
-*/
-
-    RecordIndex<K> * search (const K& key) {
-        unsigned int h = hash->operator()(key) % c;
-        unsigned int i = 0;
-        unsigned int hi = h;
+        empty.index = -1;
+        unsigned long h = hash->operator()(key) % c;
+        unsigned long i = 0;
+        unsigned long hi = h;
 
         while (entry_status[hi] != EMPTY) {
             if (entry_status[hi] == OCCUPIED && entries[hi] != key)
                 h = f->operator()(hi);
             if (entry_status[hi] == OCCUPIED && entries[hi] == key) {
-                return &records[hi];
+                return records[hi];
             }
             ++i;
             hi = (h + i) % c;
         }
-        return NULL;
+        return empty;
     }
-
-/*
-    bool search (const K& key) {
-        unsigned int h = hash->operator()(key) % c;
-        unsigned int i = 0;
-        unsigned int hi = h;
-
-        while (entry_status[hi] != EMPTY) {
-            if (entry_status[hi] == OCCUPIED && entries[hi] != key)
-                h = f->operator()(hi);
-            if (entry_status[hi] == OCCUPIED && entries[hi] == key) {
-                return true;
-            }
-            ++i;
-            hi = (h + i) % c;
-        }
-        return false;
-    }
-*/
 
     bool erase (const K& key) {
-        unsigned int h = hash->operator()(key) % c;
-        unsigned int i = 0;
-        unsigned int hi = h;
+        unsigned long h = hash->operator()(key) % c;
+        unsigned long i = 0;
+        unsigned long hi = h;
 
         while (entry_status[hi] != EMPTY) {
             if (entry_status[hi] == OCCUPIED && entries[hi] == key) {
@@ -245,27 +198,28 @@ public:
         return false;
     }
 
-    double getLoadFactor(int size, int capacity) {
+    double getLoadFactor(long size, long capacity) {
+        
         return (double) size / capacity;
     }
 
     string str(void) {
         std::ostringstream os;
-        for (int i = 0; i < c; i++) {
+        for (long i = 0; i < c; i++) {
             if (entry_status[i] == OCCUPIED) {
-                os << "	" << i << ": " << "[" << records[i].record.feature_name << ":" << records[i].record.state_alpha << ", [" << records[i].index << "]]" << endl;
+                os << "	" << i << ": " << "[" << records[i].feature_name << ":" << records[i].state_alpha << ", [" << records[i].index << "]]" << endl;
             }
         }
         return os.str();
     }
 
-    int getTableSize(void) {
+    long getTableSize(void) {
         return c;
     }
 
-    int getAverageNameLength(void) {
-        int sum = 0, count = 0;
-        for (int i = 0; i < c; i++)
+    long getAverageNameLength(void) {
+        long sum = 0, count = 0;
+        for (long i = 0; i < c; i++)
             if (entry_status[i] == OCCUPIED) {
                 sum += entries[i].length();
                 count++;
@@ -274,20 +228,20 @@ public:
         return sum / count;
     }
 
-    int getNumFeatures(void) {
+    long getNumFeatures(void) {
         return features.size();
     }
 
-    int getNumRecords(void) {
+    long getNumRecords(void) {
         return records.size();
     }
 
-    int getNumOccupied(void) {
+    long getNumOccupied(void) {
         return size;
     }
 
 
-    unsigned int getMaxCollisions(void) {
+    unsigned long getMaxCollisions(void) {
         return collisions;
     }
 

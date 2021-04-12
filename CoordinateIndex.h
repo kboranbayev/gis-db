@@ -1,15 +1,15 @@
 #ifndef COORDINATEINDEX_H
 #define COORDINATEINDEX_H
 
-#include "GIS.h"
+#include "GISRecord.h"
 
-#define N 4
+#define     N   4       // Number of objects that can be stored in a single node
 
 using namespace std;
 
 struct Point {
-    long x; // long
-    long y; // lat
+    long x;     // lat
+    long y;     // long
     Point(long _x, long _y) {
         x = _x;
         y = _y;
@@ -29,11 +29,9 @@ struct Point {
 template <typename K>
 struct Node {
     Point                   topLeft,
-                            botRight; // Node region boundaries
-    // vector<Record <K>>      records;        // Holds a collection of records up to N
+                            botRight;       // Node region boundaries
     vector<Point>           coordinates;    // Holds corresponding coordinate points
-    vector<RecordIndex<K>>      records;
-    // vector<int>                 lineNums;       // Holds corresponding file line numbers
+    vector<long>            record_offsets;
     bool                    isFull;         // True if bucket reached its limit to N, False otherwise
     bool                    isLeaf;         // True if Node is a leaf and accepts more data
                                             // False if Node is split into 4 inner nodes
@@ -53,12 +51,10 @@ struct Node {
         se = NULL;
     }
 
-    // void add (Point _p, int _lineNo, Record <K> _record) {
-    void add (Point _p, RecordIndex <K> _record) {
-        //cout << "\tADD: " << _p.str() << " SIZE: " << coordinates.size() << endl;
+    void add (Point _p, long _offset) {
         if (coordinates.size() < N || !isFull) {
             coordinates.push_back(_p);
-            records.push_back(_record);
+            record_offsets.push_back(_offset);
             if (coordinates.size() == N) isFull = true;
         }
     }
@@ -67,79 +63,76 @@ struct Node {
         std::ostringstream os;
 
         for (unsigned i = 0; i < coordinates.size(); i++) {
-            os << "[" << coordinates[i].str() << ", " << records[i].index << "] ";
+            os << "[" << coordinates[i].str() << ", " << record_offsets[i] << "] ";
         }
-        os << endl;
 
         return os.str();
     }
 
-    Node * nw;
-    Node * ne;
-    Node * sw;
-    Node * se;
+    Node * nw;      // North-West
+    Node * ne;      // North-East 
+    Node * sw;      // South-West
+    Node * se;      // South-East
 };
 
 template <typename K>
 class CoordinateIndex {
     private:
         Node<K> * root;
-        Point topLeft, botRight;
     
     public:
+        Point topLeft, botRight;
         CoordinateIndex (Point _topLeft, Point _botRight) {
             topLeft = _topLeft;
             botRight = _botRight;
             root = NULL;
         }
 
+        Point getTopLeftPoint (void) {
+            return root->topLeft;
+        }
+
+        Point getBotRightPoint (void) {
+            return root->botRight;
+        }
+
+        vector<long> searchNW (Point _topLeft, Point _botRight) {
+            vector<long> result;
+
+            return result;
+        }
+
         string str () {
             std::ostringstream os;
             
-            if (root == NULL) return "*\n\t";
+            if (root == NULL) return "*\n";
  
+            if (root != NULL) {
                 Node<K> * tmp = root;
-                if (!root->isLeaf) {
-                    if (root->nw != NULL) {
-                        root = root->nw;
-                        os << "\t" << str();    
-                    } else {
-                        os << "\t*" << endl;
-                    }
-                    root = tmp;
-                    if (root->ne != NULL) {
-                        root = root->ne;
-                        os << "\t" << str(); 
-                    } else {
-                        os << "\t*" << endl;
-                    }
-                    root = tmp;
-                }
-
                 if (root->isLeaf) {
-                    os << root->str() << "\t";
+                    os << "  " << root->str() << endl;
                 }
 
-                if (!root->isLeaf) {                
-                    os << "@" << endl << "\t\t";
-                    if (root->sw != NULL) {
-                        root = root->sw;
-                        os << "\t" << str();    
-                    } else {
-                        os << "\t*" << endl;
-                    }
+                if (!root->isLeaf) {
+                    root = root->sw;
+                    os << "  " << str();
                     root = tmp;
-                    if (root->se != NULL) {
-                        root = root->se;
-                        os << "\t" << str();    
-                    } else {
-                        os << "\t*" << endl;
-                    }
                     
+                    root = root->nw;
+                    os << "  " << str();
                     root = tmp;
-                }
+                    
+                    os << "@" << endl;
 
+                    root = root->se;
+                    os << "  " << str();
+                    root = tmp;
 
+                    root = root->ne;
+                    os << "  " << str();
+                    root = tmp;
+                }          
+            }
             return os.str();
         } 
 
@@ -153,21 +146,20 @@ class CoordinateIndex {
             for (unsigned i = 0; i < tmp->coordinates.size(); i++) {
                 if (tmp->topLeft.x <= tmp->coordinates[i].x && tmp->coordinates[i].x <= newX)
                 {
-                    // Indicates topLeftTree
                     if (tmp->topLeft.y >= tmp->coordinates[i].y && tmp->coordinates[i].y >= newY) {
                         if (root->nw == NULL) {
                             
                             root->nw = new Node<K> (Point(tmp->topLeft.x, tmp->topLeft.y), Point(newX, newY));
                         }
                         root = root->nw;
-                        insert(tmp->coordinates[i], tmp->records[i]);
+                        insert(tmp->coordinates[i], tmp->record_offsets[i]);
                     } else {
                         if (root->sw == NULL) {
 
                             root->sw = new Node<K> (Point(tmp->topLeft.x, newY), Point(newX, tmp->botRight.y));
                         }
                         root = root->sw;
-                        insert(tmp->coordinates[i], tmp->records[i]);
+                        insert(tmp->coordinates[i], tmp->record_offsets[i]);
                     }
                 } else {
                     if (tmp->topLeft.y >= tmp->coordinates[i].y && tmp->coordinates[i].y >= newY) {
@@ -175,44 +167,52 @@ class CoordinateIndex {
                             root->ne = new Node<K> (Point(newX, tmp->topLeft.y), Point(tmp->botRight.x, newY));
                         }
                         root = root->ne;
-                        insert(tmp->coordinates[i], tmp->records[i]);
+                        insert(tmp->coordinates[i], tmp->record_offsets[i]);
                     } else {
                         if (root->se == NULL) {
                             root->se = new Node<K> (Point(newX, newY), Point(tmp->botRight.x, tmp->botRight.y));
                         }
                         root = root->se;
-
-                        insert(tmp->coordinates[i], tmp->records[i]);
+                        insert(tmp->coordinates[i], tmp->record_offsets[i]);
                     }
                 }   
                 root = tmp;
             }
 
             root->coordinates.clear();
-            root->records.clear();
+            root->record_offsets.clear();
         }
 
-        void insert (Point _p, RecordIndex<K> _record) {
+        void insert (Point _p, long _offset) {
             if (!inBoundary(_p)) {
-                cerr << "Not in World boundary" << endl;
+                // cerr << "Out of bound" << endl; // uncomment this line, to check the import function
                 return;
             }
 
             if (root == NULL) {
                 root = new Node<K> (topLeft, botRight);
-                root->add(_p, _record);
+                root->add(_p, _offset);
                 return;
             }
 
             if (root != NULL) {
                 if (root->isFull && root->isLeaf) { // Subdivide
+                    int count_identicals = 0;
+                    for (auto & r : root->coordinates) {
+                        if (_p.x == r.x && _p.y == r.y)
+                            count_identicals++;
+                        if (count_identicals == 4) {
+                            cerr << "4 Identical coordinate points found in a single Node. Skip insertion" << endl;
+                            return;
+                        }
+                    }
                     subdivide();
-                    insert(_p, _record);
+                    insert(_p, _offset);
                     return;
                 }
 
                 if (!root->isFull && root->isLeaf) {
-                    root->add(_p, _record);
+                    root->add(_p, _offset);
                     return;
                 }
 
@@ -227,13 +227,13 @@ class CoordinateIndex {
                                 root->nw = new Node<K> (Point(root->topLeft.x, root->topLeft.y), Point(newX, newY));
                             }
                             root = root->nw;
-                            insert(_p, _record);
+                            insert(_p, _offset);
                         } else {
                             if (root->sw == NULL) {
                                 root->sw = new Node<K> (Point(root->topLeft.x, newY), Point(newX, root->botRight.y));
                             }
                             root = root->sw;
-                            insert(_p, _record);
+                            insert(_p, _offset);
                         }
                     } else {
                         if (root->topLeft.y >= _p.y && _p.y >= newY) {
@@ -241,13 +241,13 @@ class CoordinateIndex {
                                 root->ne = new Node<K> (Point(newX, root->topLeft.y), Point(root->botRight.x, newY));
                             }
                             root = root->ne;
-                            insert(_p, _record);
+                            insert(_p, _offset);
                         } else {
                             if (root->se == NULL) {
                                 root->se = new Node<K> (Point(newX, newY), Point(root->botRight.x, root->botRight.y));
                             }
                             root = root->se;
-                            insert(_p, _record);
+                            insert(_p, _offset);
                         }
                     }
                     root = tmp;
@@ -255,11 +255,11 @@ class CoordinateIndex {
             }
         }
 
-        vector<RecordIndex<K>> search (Point _p) {
-            vector<RecordIndex<K>> result;
+        vector<long> search (Point _p) {
+            vector<long> result;
 
             if (!inBoundary(_p)) {
-                cerr << "Not in World boundary" << endl;
+                // cerr << "Out of bound" << endl; // uncomment this line, to check if what_is_at and what_is_in actions working properly
                 return {};
             }
 
@@ -271,7 +271,7 @@ class CoordinateIndex {
                 if (root->isLeaf) {
                     for (unsigned i = 0; i < root->coordinates.size(); i++) {
                         if (root->coordinates[i].x == _p.x && root->coordinates[i].y == _p.y)
-                            result.push_back(root->records[i]);
+                            result.push_back(root->record_offsets[i]);
                     }
                     if (result.size() > 0) return result;
                 }
