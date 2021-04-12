@@ -37,11 +37,11 @@ For every GIS record in the database file that matches the given <feature name> 
  
 For every GIS record in the database file whose coordinates fall within the closed rectangle with the specified height and width, centered at the <geographic coordinate>, log the offset at which the record was found, and the feature name, the state name, and the primary latitude and primary longitude. The half-height and half-width are specified as total seconds.
   
-**what_is_in<tab>-long<tab><geographic coordinate><tab><half-height><tab><half-width>**
+**what_is_in<tab> -long<tab><geographic coordinate><tab><half-height><tab><half-width>**
   
  Shows long detailed information on the search results.
  
- **what_is_in<tab>-filter [ pop | water | structure ]<geographic coordinate><tab><half-height><tab><half-width>**
+ **what_is_in<tab> -filter [ pop | water | structure ]<geographic coordinate><tab><half-height><tab><half-width>**
   
  Search feature with filter match:
  
